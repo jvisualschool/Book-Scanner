@@ -1,0 +1,53 @@
+# 서버 설정 파일 (민감한 정보 포함)
+server_config.json
+
+# 환경 변수 파일
+.env
+.env.local
+.env.production
+
+# 데이터베이스 파일 (스키마 파일은 제외)
+*.db
+*.sqlite
+# *.sql  # init_db.sql은 포함해야 함
+
+# 로그 파일
+debug_log.txt
+app.log
+*.log
+
+# 업로드 파일
+uploads/
+upload/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# 임시 파일
+*.tmp
+*.temp
+*~
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Node modules (필요한 경우)
+node_modules/
+
+# 백업 파일
+*.bak
+*.backup
+
+# 테스트 파일
+test_*.php
+
+# 서버 전용 파일
+server_config.json
+deploy_auto.sh
+setup_server.sh
+DEPLOYMENT_COMPLETE.md

@@ -1,0 +1,1216 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>책장 스캐너 | BOOK SCANNER</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap"
+        rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#4F46E5', // Indigo 600
+                        secondary: '#10B981', // Emerald 500
+                    },
+                    fontFamily: {
+                        sans: ['Noto Sans KR', 'sans-serif'],
+                    },
+                    animation: {
+                        'bounce-slow': 'bounce 2s infinite',
+                        'pulse-fast': 'pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        :root {
+            --bg-primary: #f9fafb;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #f3f4f6;
+            --text-primary: #111827;
+            --text-secondary: #6b7280;
+            --border-color: #e5e7eb;
+            --glass-bg: rgba(255, 255, 255, 0.95);
+            --glass-border: rgba(255, 255, 255, 0.2);
+            --shadow-color: rgba(0, 0, 0, 0.1);
+            --hover-bg: #eef2ff;
+            --modal-overlay: rgba(0, 0, 0, 0.6);
+        }
+
+        .dark {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-tertiary: #334155;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --border-color: #334155;
+            --glass-bg: rgba(30, 41, 59, 0.95);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --shadow-color: rgba(0, 0, 0, 0.5);
+            --hover-bg: #1e293b;
+            --modal-overlay: rgba(0, 0, 0, 0.8);
+        }
+
+        * {
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+        }
+
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+        }
+
+        .glass-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+        }
+
+        .truncate-multiline {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        /* Custom Loader Animation */
+        .book-loader {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid #e0e7ff;
+            border-radius: 50%;
+            border-top-color: #4F46E5;
+        }
+
+        /* Dark mode toggle button */
+        .theme-toggle {
+            position: relative;
+            width: 60px;
+            height: 30px;
+            background: var(--bg-tertiary);
+            border-radius: 15px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            padding: 0 4px;
+            border: 2px solid var(--border-color);
+        }
+
+        .theme-toggle-slider {
+            width: 22px;
+            height: 22px;
+            background: #4F46E5;
+            border-radius: 50%;
+            transition: transform 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 12px;
+        }
+
+        .dark .theme-toggle-slider {
+            transform: translateX(30px);
+        }
+
+        /* Override Tailwind classes for dark mode */
+        .dark .bg-white {
+            background-color: var(--bg-secondary) !important;
+        }
+
+        .dark .bg-gray-50 {
+            background-color: var(--bg-primary) !important;
+        }
+
+        .dark .bg-gray-100 {
+            background-color: var(--bg-tertiary) !important;
+        }
+
+        .dark .text-gray-800,
+        .dark .text-gray-900 {
+            color: var(--text-primary) !important;
+        }
+
+        .dark .text-gray-500,
+        .dark .text-gray-600,
+        .dark .text-gray-700 {
+            color: var(--text-secondary) !important;
+        }
+
+        .dark .border-gray-100,
+        .dark .border-gray-200 {
+            border-color: var(--border-color) !important;
+        }
+
+        .dark .shadow-sm,
+        .dark .shadow-md,
+        .dark .shadow-lg {
+            box-shadow: 0 4px 6px var(--shadow-color) !important;
+        }
+
+        .dark .hover\:bg-gray-100:hover {
+            background-color: var(--hover-bg) !important;
+        }
+
+        .dark .hover\:bg-indigo-50:hover {
+            background-color: rgba(79, 70, 229, 0.1) !important;
+        }
+
+        .dark .bg-indigo-50 {
+            background-color: rgba(79, 70, 229, 0.1) !important;
+        }
+
+        .dark .text-gray-300 {
+            color: #cbd5e1 !important;
+        }
+
+        .dark .text-gray-400 {
+            color: #94a3b8 !important;
+        }
+
+        .dark .divide-gray-100>* {
+            border-color: var(--border-color) !important;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50 text-gray-800 min-h-screen">
+
+    <!-- Header -->
+    <header class="bg-white shadow-sm sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
+            <h1 class="text-xl font-bold text-gray-900 flex items-center gap-2">
+                <i class="fas fa-book-open text-primary cursor-pointer hover:text-indigo-600 transition" id="splashIcon" onclick="showSplashModal()"></i> <span id="appTitle">책장 스캐너</span>
+            </h1>
+            <div class="flex gap-4 items-center">
+                <!-- Language Toggle -->
+                <button onclick="toggleLanguage()" 
+                    class="text-sm text-gray-500 hover:text-primary transition px-2 py-1 rounded flex items-center gap-1"
+                    title="언어 전환">
+                    <i class="fas fa-language"></i> <span id="langIndicator">EN</span>
+                </button>
+                <!-- Dark Mode Toggle -->
+                <div class="theme-toggle" onclick="toggleTheme()" title="테마 전환">
+                    <div class="theme-toggle-slider">
+                        <i class="fas fa-sun" id="themeIcon"></i>
+                    </div>
+                </div>
+                <button onclick="document.getElementById('apiKeyModal').classList.remove('hidden')"
+                    class="text-sm text-gray-500 hover:text-primary">
+                    <i class="fas fa-cog"></i> <span id="settingsText">설정</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-4 py-6 space-y-6">
+
+        <!-- Upload Section -->
+        <section class="glass-panel rounded-2xl shadow-lg p-6 text-center border border-gray-100">
+            <!-- Normal State -->
+            <div id="uploadArea">
+                <div class="mb-4">
+                    <div
+                        class="w-16 h-16 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-2 text-primary text-2xl">
+                        <i class="fas fa-camera"></i>
+                    </div>
+                    <h2 id="scanTitle" class="text-lg font-bold text-gray-800">책장 스캔하기</h2>
+                    <p id="scanDesc" class="text-sm text-gray-500">책등이 잘 보이게 사진을 찍으면 AI가 자동으로 정리해드려요!</p>
+                </div>
+
+                <div class="space-y-4 max-w-md mx-auto">
+                    <label for="imageInput" class="block w-full cursor-pointer">
+                        <div
+                            class="w-full py-4 px-4 bg-primary text-white rounded-xl hover:bg-indigo-700 transition font-bold shadow-md flex items-center justify-center gap-2 text-lg transform hover:scale-[1.02] active:scale-95 duration-200">
+                            <i class="fas fa-camera-retro"></i> <span id="takePhotoLabel">사진 촬영 / 선택</span>
+                        </div>
+                        <input type="file" id="imageInput" accept="image/*" class="hidden" capture="environment">
+                    </label>
+
+                    <div id="previewContainer" class="hidden">
+                        <div class="relative rounded-xl overflow-hidden max-h-80 bg-black shadow-inner mb-4">
+                            <img id="imagePreview" class="w-full h-full object-contain mx-auto opacity-90" />
+                            <button id="cancelPreview"
+                                class="absolute top-2 right-2 bg-white/90 p-2 rounded-full text-gray-700 hover:text-red-500 shadow-sm transition">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <button id="analyzeBtn"
+                            class="w-full py-4 px-4 bg-primary text-white rounded-xl hover:bg-indigo-700 transition font-bold shadow-md flex items-center justify-center gap-2 text-lg transform hover:scale-[1.02] active:scale-95 duration-200">
+                            <span id="analyzeBtnText">이 사진으로 분석 시작</span> <i class="fas fa-magic text-yellow-400"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Loading State -->
+            <div id="loadingArea" class="hidden py-10">
+                <div class="relative w-24 h-24 mx-auto mb-6">
+                    <div class="absolute inset-0 bg-indigo-100 rounded-full animate-pulse-fast"></div>
+                    <div class="relative flex items-center justify-center h-full">
+                        <i class="fas fa-book text-4xl text-primary animate-bounce"></i>
+                    </div>
+                </div>
+                <h3 id="analyzingTitle" class="text-xl font-bold text-gray-800 mb-2">AI가 책을 읽고 있어요</h3>
+                <p id="loadingText" class="text-gray-500 font-medium h-6 transition-all duration-300">잠시만 기다려주세요...</p>
+                <div class="mt-8 max-w-xs mx-auto bg-gray-100 rounded-full h-2 overflow-hidden">
+                    <div id="progressBar" class="bg-primary h-full rounded-full transition-all duration-300 ease-out"
+                        style="width: 5%"></div>
+                </div>
+            </div>
+
+            <p id="statusMsg" class="mt-4 text-sm font-medium min-h-[20px]"></p>
+        </section>
+
+        <!-- Data Section -->
+        <section id="dataSection" class="bg-white rounded-2xl shadow-lg p-6 border border-gray-100 hidden">
+            <div class="flex justify-between items-center mb-6 flex-wrap gap-4">
+                <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2">
+                    <i class="fas fa-list text-gray-400"></i> <span id="libraryTitle">내 서재 목록</span> <span id="bookCount" class="text-sm font-normal text-gray-500 ml-2"></span>
+                </h3>
+                <div class="flex gap-2 flex-wrap">
+                    <button onclick="fetchBooks()"
+                        class="p-2 text-gray-500 hover:text-primary transition rounded-full hover:bg-gray-100"
+                        title="새로고침">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                    <button id="retryBtn"
+                        class="py-2.5 px-5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm font-bold flex items-center gap-2 shadow-md hover:shadow-lg transition transform hover:-translate-y-0.5">
+                        <i class="fas fa-search-plus"></i> <span id="retryBtnText">꼼꼼하게 다시 찾기</span>
+                    </button>
+                    <button onclick="exportToExcel()"
+                        class="py-2.5 px-5 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-bold flex items-center gap-2 shadow-md hover:shadow-lg transition transform hover:-translate-y-0.5">
+                        <i class="fas fa-file-excel"></i> <span id="exportBtnText">엑셀로 저장</span>
+                    </button>
+                    <button onclick="resetLibrary()"
+                        class="py-2.5 px-5 bg-red-500 text-white rounded-lg hover:bg-red-600 text-sm font-bold flex items-center gap-2 shadow-md hover:shadow-lg transition transform hover:-translate-y-0.5">
+                        <i class="fas fa-trash-alt"></i> <span id="deleteBtnText">모두 삭제</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Retry Banner (정보 표시용) -->
+            <div id="retryBanner" class="hidden bg-indigo-50 border border-indigo-100 rounded-xl p-6 text-center mb-6">
+                <div class="text-indigo-600 text-3xl mb-3"><i class="fas fa-info-circle"></i></div>
+                <h3 id="retryBannerTitle" class="text-lg font-bold text-gray-800 mb-1">"좀더 꼼꼼하게 정리해 볼까요?"</h3>
+                <p id="retryBannerDesc" class="text-sm text-gray-600 mb-4">표지나 정보가 비어있는 책들이 보여요.<br>시간이 좀 걸리지만, 더 자세히 찾아볼 수 있어요!</p>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left text-gray-500">
+                    <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b">
+                        <tr>
+                            <th scope="col" class="px-4 py-3 rounded-tl-lg">표지</th>
+                            <th scope="col" class="px-4 py-3">책 정보 (제목 / ISBN)</th>
+                            <th scope="col" class="px-4 py-3">상세 (저자 / 출판사)</th>
+                            <th scope="col" class="px-4 py-3">출판일</th>
+                            <th scope="col" class="px-4 py-3 rounded-tr-lg">줄거리</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bookList" class="divide-y divide-gray-100">
+                        <!-- Rows will be populated here -->
+                    </tbody>
+                </table>
+                <div id="emptyState" class="text-center py-16">
+                    <div class="text-gray-300 text-5xl mb-4"><i class="fas fa-book-open"></i></div>
+                    <p class="text-gray-400 text-lg"><span id="emptyLibraryText">아직 등록된 책이 없어요.</span><br><span id="emptyLibraryDesc">위에서 사진을 찍어보세요!</span></p>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="max-w-6xl mx-auto px-4 py-6">
+        <div class="glass-panel rounded-2xl shadow-lg p-5 border border-gray-100" style="padding-left: 15%; padding-right: 15%;">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm text-gray-600">
+                <!-- App Name -->
+                <div class="min-w-[100px]">
+                    <h4 class="font-bold text-gray-900 mb-1" id="footerAppTitle">책장 스캐너</h4>
+                    <p class="text-xs text-gray-500" id="footerAppSubtitle">BOOK SCANNER</p>
+                </div>
+                
+                <!-- Tech Stack -->
+                <div class="min-w-[100px]">
+                    <h4 class="font-bold text-gray-900 mb-1" id="footerTechTitle">기술 스택</h4>
+                    <ul class="text-xs space-y-0.5">
+                        <li><a href="https://www.php.net/" target="_blank" class="hover:text-primary hover:underline transition">PHP 8.x</a>, <a href="https://www.mysql.com/" target="_blank" class="hover:text-primary hover:underline transition">MySQL</a></li>
+                        <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML" target="_blank" class="hover:text-primary hover:underline transition">HTML5</a>, <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript" target="_blank" class="hover:text-primary hover:underline transition">JavaScript</a></li>
+                        <li><a href="https://tailwindcss.com/" target="_blank" class="hover:text-primary hover:underline transition">Tailwind CSS</a></li>
+                    </ul>
+                </div>
+                
+                <!-- APIs -->
+                <div class="min-w-[100px]">
+                    <h4 class="font-bold text-gray-900 mb-1" id="footerApiTitle">사용 API</h4>
+                    <ul class="text-xs space-y-0.5">
+                        <li><a href="https://ai.google.dev/" target="_blank" class="hover:text-primary hover:underline transition">Google Gemini API</a></li>
+                        <li><a href="https://developers.google.com/books" target="_blank" class="hover:text-primary hover:underline transition">Google Books API</a></li>
+                    </ul>
+                </div>
+                
+                <!-- Developer & Copyright -->
+                <div class="min-w-[100px]">
+                    <h4 class="font-bold text-gray-900 mb-1" id="footerDevTitle">개발자</h4>
+                    <p class="text-xs mb-1"><a href="mailto:jvisualschool@gmail.com" class="hover:text-primary hover:underline transition">Jinho Jung</a></p>
+                    <p class="text-xs text-gray-500">© 2026</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Splash Modal -->
+    <div id="splashModal" class="fixed inset-0 bg-black bg-opacity-60 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto relative">
+            <!-- Content -->
+            <div class="p-4 pb-12">
+                <!-- Close Button (우측 하단) -->
+                <button onclick="hideSplashModal()" class="absolute bottom-4 right-4 text-white bg-black bg-opacity-50 hover:bg-opacity-70 rounded-full w-10 h-10 flex items-center justify-center transition z-10">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+                <!-- Splash Image (16:9) with Title Overlay -->
+                <div class="mb-6 rounded-xl overflow-hidden shadow-lg relative">
+                    <img id="splashImage" src="splash.jpg" alt="Book Scanner Splash" class="w-full aspect-video object-cover" onerror="this.style.display='none'">
+                    <!-- Title Overlay (우측 상단) -->
+                    <div class="absolute top-4 right-4">
+                        <div class="bg-black bg-opacity-50 rounded-lg px-4 py-2">
+                            <h2 class="text-2xl font-bold text-white" id="splashAppTitle">책장 스캐너 <span class="text-base text-gray-200 font-normal" id="splashAppSubtitle">BOOK SCANNER</span></h2>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Footer Content -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm text-gray-600 border-t border-gray-200 pt-6">
+                    <!-- Tech Stack -->
+                    <div>
+                        <h4 class="font-bold text-gray-900 mb-2" id="splashTechTitle">기술 스택</h4>
+                        <ul class="text-xs space-y-1">
+                            <li><a href="https://www.php.net/" target="_blank" class="hover:text-primary hover:underline transition">PHP 8.x</a>, <a href="https://www.mysql.com/" target="_blank" class="hover:text-primary hover:underline transition">MySQL</a></li>
+                            <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML" target="_blank" class="hover:text-primary hover:underline transition">HTML5</a>, <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript" target="_blank" class="hover:text-primary hover:underline transition">JavaScript</a></li>
+                            <li><a href="https://tailwindcss.com/" target="_blank" class="hover:text-primary hover:underline transition">Tailwind CSS</a></li>
+                        </ul>
+                    </div>
+                    
+                    <!-- APIs -->
+                    <div>
+                        <h4 class="font-bold text-gray-900 mb-2" id="splashApiTitle">사용 API</h4>
+                        <ul class="text-xs space-y-1">
+                            <li><a href="https://ai.google.dev/" target="_blank" class="hover:text-primary hover:underline transition">Google Gemini API</a></li>
+                            <li><a href="https://developers.google.com/books" target="_blank" class="hover:text-primary hover:underline transition">Google Books API</a></li>
+                            <li><a href="https://developers.naver.com" target="_blank" class="hover:text-primary hover:underline transition">네이버 책 검색 API</a></li>
+                        </ul>
+                    </div>
+                    
+                    <!-- Developer -->
+                    <div>
+                        <h4 class="font-bold text-gray-900 mb-2" id="splashDevTitle">개발자</h4>
+                        <p class="text-xs mb-2"><a href="mailto:jvisualschool@gmail.com" class="hover:text-primary hover:underline transition">Jinho Jung</a></p>
+                        <p class="text-xs text-gray-500">© 2026</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- API Key Modal -->
+    <div id="apiKeyModal"
+        class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md transform transition-all">
+            <h3 class="text-lg font-bold mb-4">설정</h3>
+            <p class="text-sm text-gray-600 mb-4">
+                이 앱은 AI 이미지 분석을 위해 Google Gemini API를 사용하며, 도서 정보 검색을 위해 네이버 책 검색 API와 Google Books API를 활용합니다.
+            </p>
+            <div
+                class="bg-green-50 p-4 rounded-xl border border-green-200 text-sm text-green-800 mb-6 flex items-start gap-3">
+                <i class="fas fa-check-circle mt-0.5"></i>
+                <div>
+                    <strong>설정 완료됨</strong><br>
+                    API 키가 서버에 안전하게 저장되어 있습니다.
+                </div>
+            </div>
+            <button onclick="document.getElementById('apiKeyModal').classList.add('hidden')"
+                class="w-full py-3 bg-gray-900 text-white rounded-xl font-bold hover:bg-black transition">닫기</button>
+        </div>
+    </div>
+
+    <!-- Description Modal -->
+    <div id="descModal"
+        class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+        <div
+            class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-lg max-h-[80vh] overflow-y-auto transform transition-all">
+            <h3 id="modalTitle" class="text-xl font-bold mb-3 text-gray-900 border-b pb-2"></h3>
+            <p id="modalDesc" class="text-gray-700 text-sm leading-relaxed whitespace-pre-line"></p>
+            <button onclick="document.getElementById('descModal').classList.add('hidden')"
+                class="mt-6 w-full py-3 bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold rounded-xl transition">닫기</button>
+        </div>
+    </div>
+
+    <!-- Delete Confirm Modal -->
+    <div id="deleteConfirmModal"
+        class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm transform transition-all text-center">
+            <div
+                class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4 text-red-500 text-2xl">
+                <i class="fas fa-trash-alt"></i>
+            </div>
+            <h3 class="text-lg font-bold mb-2 text-gray-900">정말 삭제하시겠습니까?</h3>
+            <p class="text-sm text-gray-600 mb-6">
+                지금까지 스캔한 모든 책 정보가 사라지며,<br>복구할 수 없습니다.
+            </p>
+            <div class="flex gap-3">
+                <button onclick="document.getElementById('deleteConfirmModal').classList.add('hidden')"
+                    class="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition">취소</button>
+                <button onclick="runReset()"
+                    class="flex-1 py-3 bg-red-500 text-white rounded-xl font-bold hover:bg-red-600 transition shadow-md">네,
+                    삭제합니다</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Large Cover Preview Modal/Tooltip -->
+    <div id="largePreview"
+        class="hidden fixed z-[9999] pointer-events-none rounded-xl shadow-2xl border-4 border-white bg-white w-56 transition-opacity duration-150">
+        <img id="largePreviewImg" class="w-full h-auto rounded-lg" src="" />
+    </div>
+
+    <script>
+        // Language Settings
+        let currentLang = localStorage.getItem('language') || 'ko';
+        const translations = {
+            ko: {
+                appTitle: '책장 스캐너',
+                langIndicator: 'EN',
+                settings: '설정',
+                scanTitle: '책장 스캔하기',
+                scanDesc: '책등이 잘 보이게 사진을 찍으면 AI가 자동으로 정리해드려요!',
+                takePhotoLabel: '사진 촬영 / 선택',
+                analyzeBtnText: '이 사진으로 분석 시작',
+                analyzingTitle: 'AI가 책을 읽고 있어요',
+                waitMessage: '잠시만 기다려주세요...',
+                libraryTitle: '내 서재 목록',
+                retryBtnText: '꼼꼼하게 다시 찾기',
+                exportBtnText: '엑셀로 저장',
+                deleteBtnText: '모두 삭제',
+                emptyLibraryText: '아직 등록된 책이 없어요.',
+                emptyLibraryDesc: '위에서 사진을 찍어보세요!',
+                retryBannerTitle: '"좀더 꼼꼼하게 정리해 볼까요?"',
+                retryBannerDesc: '표지나 정보가 비어있는 책들이 보여요.<br>시간이 좀 걸리지만, 더 자세히 찾아볼 수 있어요!',
+                retryLoading: '꼼꼼하게 다시 찾아보고 있어요... 조금만 기다려주세요!',
+                complete: '완료!',
+                booksFound: '권의 책을 찾았습니다.',
+                retryComplete: '정리가 끝났습니다!',
+                retryUpdated: '권의 정보를 더 찾아냈어요.',
+                footerAppTitle: '책장 스캐너',
+                footerAppSubtitle: 'BOOK SCANNER',
+                footerTechTitle: '기술 스택',
+                footerApiTitle: '사용 API',
+                footerDevTitle: '개발자'
+            },
+            en: {
+                appTitle: 'BOOK SCANNER',
+                langIndicator: '한',
+                settings: 'Settings',
+                scanTitle: 'Scan Bookshelf',
+                scanDesc: 'Take a photo of book spines clearly visible, and AI will automatically organize them for you!',
+                takePhotoLabel: 'Take Photo / Select',
+                analyzeBtnText: 'Start Analysis with This Photo',
+                analyzingTitle: 'AI is Reading Books',
+                waitMessage: 'Please wait...',
+                libraryTitle: 'My Library',
+                retryBtnText: 'Retry Search',
+                exportBtnText: 'Export to Excel',
+                deleteBtnText: 'Delete All',
+                emptyLibraryText: 'No books registered yet.',
+                emptyLibraryDesc: 'Take a photo above!',
+                retryBannerTitle: '"Would you like to organize more carefully?"',
+                retryBannerDesc: 'There are books with missing covers or information.<br>It may take some time, but we can search more thoroughly!',
+                retryLoading: 'Searching more carefully... Please wait a moment!',
+                complete: 'Complete!',
+                booksFound: ' books found.',
+                retryComplete: 'Organization complete!',
+                retryUpdated: ' more books found.',
+                footerAppTitle: 'BOOK SCANNER',
+                footerAppSubtitle: '책장 스캐너',
+                footerTechTitle: 'Tech Stack',
+                footerApiTitle: 'APIs Used',
+                footerDevTitle: 'Developer'
+            }
+        };
+
+        // Language Toggle Function
+        function toggleLanguage() {
+            currentLang = currentLang === 'ko' ? 'en' : 'ko';
+            localStorage.setItem('language', currentLang);
+            updateLanguage();
+        }
+
+        // Update Language
+        function updateLanguage() {
+            const t = translations[currentLang];
+            
+            // Update title
+            document.title = currentLang === 'ko' ? '책장 스캐너 | BOOK SCANNER' : 'BOOK SCANNER | 책장 스캐너';
+            
+            // Update header
+            document.getElementById('appTitle').textContent = t.appTitle;
+            document.getElementById('langIndicator').textContent = t.langIndicator;
+            document.getElementById('settingsText').textContent = t.settings;
+            
+            // Update main content
+            const elements = {
+                'scanTitle': t.scanTitle,
+                'scanDesc': t.scanDesc,
+                'takePhotoLabel': t.takePhotoLabel,
+                'analyzeBtnText': t.analyzeBtnText,
+                'analyzingTitle': t.analyzingTitle,
+                'libraryTitle': t.libraryTitle,
+                'retryBtnText': t.retryBtnText,
+                'exportBtnText': t.exportBtnText,
+                'deleteBtnText': t.deleteBtnText,
+                'emptyLibraryText': t.emptyLibraryText,
+                'emptyLibraryDesc': t.emptyLibraryDesc,
+                'retryBannerTitle': t.retryBannerTitle,
+                'retryBannerDesc': t.retryBannerDesc,
+                'footerAppTitle': t.footerAppTitle,
+                'footerAppSubtitle': t.footerAppSubtitle,
+                'footerTechTitle': t.footerTechTitle,
+                'footerApiTitle': t.footerApiTitle,
+                'footerDevTitle': t.footerDevTitle
+            };
+            
+            Object.keys(elements).forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    if (id === 'retryBannerDesc') {
+                        el.innerHTML = elements[id];
+                    } else {
+                        el.textContent = elements[id];
+                    }
+                }
+            });
+        }
+
+        // Initialize language on page load
+        function initLanguage() {
+            updateLanguage();
+        }
+
+        // Dark Mode Toggle Function
+        function toggleTheme() {
+            const html = document.documentElement;
+            const themeIcon = document.getElementById('themeIcon');
+
+            if (html.classList.contains('dark')) {
+                html.classList.remove('dark');
+                themeIcon.className = 'fas fa-sun';
+                localStorage.setItem('theme', 'light');
+            } else {
+                html.classList.add('dark');
+                themeIcon.className = 'fas fa-moon';
+                localStorage.setItem('theme', 'dark');
+            }
+        }
+
+        // Initialize theme on page load
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const themeIcon = document.getElementById('themeIcon');
+
+            if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+                document.documentElement.classList.add('dark');
+                if (themeIcon) themeIcon.className = 'fas fa-moon';
+            } else {
+                if (themeIcon) themeIcon.className = 'fas fa-sun';
+            }
+        }
+
+        // Call initTheme immediately to prevent flash
+        initTheme();
+        initLanguage();
+
+        const imageInput = document.getElementById('imageInput');
+        const previewContainer = document.getElementById('previewContainer');
+        const imagePreview = document.getElementById('imagePreview');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const analyzeBtnText = document.getElementById('analyzeBtnText');
+        const uploadArea = document.getElementById('uploadArea');
+        const loadingArea = document.getElementById('loadingArea');
+        const loadingText = document.getElementById('loadingText');
+        const statusMsg = document.getElementById('statusMsg');
+        const bookList = document.getElementById('bookList');
+        const emptyState = document.getElementById('emptyState');
+        const cancelPreview = document.getElementById('cancelPreview');
+        const progressBar = document.getElementById('progressBar');
+        
+        // 카운트다운 관련 변수
+        let countdownTimer = null;
+        let countdownSeconds = 5;
+
+        // 카운트다운 시작 함수
+        function startCountdown() {
+            // 기존 타이머가 있으면 클리어
+            if (countdownTimer) {
+                clearInterval(countdownTimer);
+            }
+            
+            countdownSeconds = 5;
+            analyzeBtnText.textContent = `이 사진으로 분석 시작 (${countdownSeconds}초)`;
+            analyzeBtn.disabled = false;
+            
+            countdownTimer = setInterval(() => {
+                countdownSeconds--;
+                if (countdownSeconds > 0) {
+                    analyzeBtnText.textContent = `이 사진으로 분석 시작 (${countdownSeconds}초)`;
+                } else {
+                    clearInterval(countdownTimer);
+                    analyzeBtnText.textContent = '이 사진으로 분석 시작';
+                    // 자동으로 분석 시작
+                    analyzeBtn.click();
+                }
+            }, 1000);
+        }
+        
+        // 카운트다운 중지 함수
+        function stopCountdown() {
+            if (countdownTimer) {
+                clearInterval(countdownTimer);
+                countdownTimer = null;
+            }
+            analyzeBtnText.textContent = '이 사진으로 분석 시작';
+        }
+
+        // Preview Elements
+        const largePreview = document.getElementById('largePreview');
+        const largePreviewImg = document.getElementById('largePreviewImg');
+
+        function showPreview(src, e) {
+            // Placeholder나 없으면 무시
+            if (!src || src.includes('via.placeholder') || src.includes('No+Img') || src.startsWith('data:image/svg+xml')) return;
+
+            largePreviewImg.src = src;
+            largePreview.classList.remove('hidden');
+            movePreview(e);
+        }
+
+        function movePreview(e) {
+            if (largePreview.classList.contains('hidden')) return;
+
+            // 마우스 커서 기준 약간 오른쪽 아래
+            let x = e.clientX + 20;
+            let y = e.clientY + 20;
+
+            // 화면 오른쪽을 벗어나면 왼쪽으로 이동
+            if (x + 240 > window.innerWidth) {
+                x = e.clientX - 260; // 너비 + 여백 고려
+            }
+
+            // 화면 아래를 벗어나면 위로 이동
+            const previewHeight = largePreview.offsetHeight || 300; // 예상 높이
+            if (y + previewHeight > window.innerHeight) {
+                y = e.clientY - previewHeight - 10;
+            }
+
+            largePreview.style.left = `${x}px`;
+            largePreview.style.top = `${y}px`;
+        }
+
+        function hidePreview() {
+            largePreview.classList.add('hidden');
+        }
+
+        const readingQuotes = [
+            { quote: "책은 인류가 쌓아 올린 가장 위대한 유산이다.", author: "헤르베르트 스펜서" },
+            { quote: "독서는 정신의 양식이다.", author: "시세로" },
+            { quote: "책 없는 방은 영혼 없는 육체와 같다.", author: "시세로" },
+            { quote: "좋은 책을 읽는 것은 과거의 가장 훌륭한 사람들과 대화하는 것과 같다.", author: "르네 데카르트" },
+            { quote: "독서는 완전한 인간을 만들고, 담론은 준비된 인간을 만들며, 글쓰기는 정확한 인간을 만든다.", author: "프랜시스 베이커" },
+            { quote: "책은 세상을 바꿀 수 있는 가장 강력한 무기다.", author: "말콤 X" },
+            { quote: "독서는 한 사람의 마음을 풍요롭게 만든다.", author: "조지프 애디슨" },
+            { quote: "책을 읽지 않는 사람은 읽을 수 없는 사람보다 나을 것이 없다.", author: "마크 트웨인" },
+            { quote: "독서는 정신의 운동이다.", author: "조지프 애디슨" },
+            { quote: "책은 우리에게 알려지지 않은 세계로의 여권이다.", author: "프랭크 스미스" },
+            { quote: "독서는 마음의 양식이다.", author: "조셉 브로드스키" },
+            { quote: "책은 침묵하는 스승이다.", author: "프란체스코 페트라르카" },
+            { quote: "독서는 생각을 키우는 가장 좋은 방법이다.", author: "찰스 스크리브너" },
+            { quote: "책을 읽는 것은 다른 시대와 장소의 사람들과 대화하는 것이다.", author: "데즈먼드 투투" },
+            { quote: "독서는 지식의 열쇠다.", author: "프랭클린 D. 루스벨트" },
+            { quote: "책은 우리의 가장 친한 친구다.", author: "찰스 디킨스" },
+            { quote: "독서는 마음을 여행시키는 것이다.", author: "메이슨 쿨리" },
+            { quote: "책은 인생의 나침반이다.", author: "에드워드 불워-리턴" },
+            { quote: "독서는 영혼을 키우는 정원이다.", author: "볼테르" },
+            { quote: "책은 시간과 공간을 초월하는 유일한 방법이다.", author: "칼 세이건" },
+            { quote: "독서는 마음의 양식이며, 지식의 원천이다.", author: "아리스토텔레스" },
+            { quote: "책은 우리에게 새로운 세계를 보여준다.", author: "조지 R.R. 마틴" },
+            { quote: "독서는 정신의 휴식이다.", author: "조셉 브로드스키" },
+            { quote: "책은 인생의 등불이다.", author: "루이 라무르" },
+            { quote: "독서는 마음을 넓히는 가장 좋은 방법이다.", author: "마리 퀴리" },
+            { quote: "책은 우리의 가장 위대한 교사다.", author: "플루타르코스" },
+            { quote: "독서는 생각의 날개를 달아준다.", author: "조지 워싱턴" },
+            { quote: "책은 영혼의 거울이다.", author: "빅토르 위고" },
+            { quote: "독서는 마음을 풍요롭게 만든다.", author: "세네카" },
+            { quote: "책은 우리에게 지혜를 준다.", author: "소크라테스" },
+            { quote: "독서는 정신의 운동이며, 마음의 양식이다.", author: "조지프 애디슨" },
+            { quote: "책은 우리의 가장 충실한 친구다.", author: "찰스 램" },
+            { quote: "독서는 마음을 키우는 정원이다.", author: "볼테르" },
+            { quote: "책은 시간을 초월하는 대화다.", author: "칼 세이건" },
+            { quote: "독서는 영혼을 치유한다.", author: "조셉 브로드스키" },
+            { quote: "책은 우리에게 새로운 시각을 준다.", author: "조지 R.R. 마틴" },
+            { quote: "독서는 마음을 여행시키는 것이다.", author: "메이슨 쿨리" },
+            { quote: "책은 인생의 나침반이며, 지식의 등불이다.", author: "에드워드 불워-리턴" },
+            { quote: "독서는 정신의 양식이고, 마음의 휴식이다.", author: "아리스토텔레스" },
+            { quote: "책은 우리에게 꿈을 준다.", author: "루이 라무르" },
+            { quote: "독서는 마음을 넓히고, 생각을 깊게 만든다.", author: "마리 퀴리" },
+            { quote: "책은 우리의 가장 위대한 선생님이다.", author: "플루타르코스" },
+            { quote: "독서는 생각의 날개를 달아주는 마법이다.", author: "조지 워싱턴" },
+            { quote: "책은 영혼의 거울이며, 마음의 창이다.", author: "빅토르 위고" },
+            { quote: "독서는 마음을 풍요롭게 만드는 가장 좋은 방법이다.", author: "세네카" },
+            { quote: "책은 우리에게 지혜를 주는 가장 소중한 선물이다.", author: "소크라테스" },
+            { quote: "독서는 정신의 운동이며, 영혼의 양식이다.", author: "조지프 애디슨" },
+            { quote: "책은 우리의 가장 충실한 친구이며, 영원한 동반자다.", author: "찰스 램" },
+            { quote: "독서는 마음을 키우는 정원이며, 영혼을 치유하는 약이다.", author: "볼테르" },
+            { quote: "책은 시간을 초월하는 대화이며, 공간을 넘나드는 여행이다.", author: "칼 세이건" }
+        ];
+        let messageInterval;
+        let progressInterval;
+
+        // Initial Load - 스캔 전에는 목록 섹션을 숨김
+        document.addEventListener('DOMContentLoaded', function() {
+            // 초기 상태: 목록 섹션 숨김
+            const dataSection = document.getElementById('dataSection');
+            if (dataSection) {
+                dataSection.classList.add('hidden');
+            }
+            emptyState.classList.remove('hidden');
+            bookList.innerHTML = '';
+        });
+
+        // Image Selection
+        imageInput.addEventListener('change', function (e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    imagePreview.src = e.target.result;
+                    previewContainer.classList.remove('hidden');
+                    // 카운트다운 시작
+                    startCountdown();
+                }
+                reader.readAsDataURL(file);
+            }
+        });
+
+        cancelPreview.addEventListener('click', () => {
+            imageInput.value = '';
+            previewContainer.classList.add('hidden');
+            stopCountdown();
+        });
+
+        // Upload & Analyze
+        analyzeBtn.addEventListener('click', async () => {
+            if (!imageInput.files[0]) return;
+
+            // 카운트다운 중지
+            stopCountdown();
+            
+            setLoading(true);
+
+            const formData = new FormData();
+            formData.append('image', imageInput.files[0]);
+
+            try {
+                const response = await fetch('api_vision.php', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                // Finish Progress
+                clearInterval(progressInterval);
+                progressBar.style.width = '100%';
+
+                const contentType = response.headers.get("content-type");
+                let result;
+                if (contentType && contentType.indexOf("application/json") !== -1) {
+                    result = await response.json();
+                } else {
+                    const text = await response.text();
+                    throw new Error('서버 응답 오류 (JSON 아님): ' + text.substring(0, 50));
+                }
+
+                if (!response.ok || (result.error)) {
+                    throw new Error(result.error || '서버 오류가 발생했습니다.');
+                }
+
+                await new Promise(r => setTimeout(r, 500)); // Small delay to show 100%
+
+                const t = translations[currentLang];
+                statusMsg.innerHTML = `<i class="fas fa-check-circle"></i> ${t.complete} 총 ${result.books.length}${t.booksFound}`;
+                statusMsg.className = 'mt-4 text-sm font-bold text-green-600 animate-bounce';
+
+                // Clear input
+                imageInput.value = '';
+                previewContainer.classList.add('hidden');
+
+                // 목록 섹션 표시
+                const dataSection = document.getElementById('dataSection');
+                if (dataSection) {
+                    dataSection.classList.remove('hidden');
+                }
+
+                // Refresh list
+                await fetchBooks();
+
+            } catch (err) {
+                console.error(err);
+                statusMsg.textContent = '오류 발생: ' + err.message;
+                statusMsg.className = 'mt-4 text-sm font-bold text-red-500';
+            } finally {
+                setLoading(false);
+            }
+        });
+
+        function setLoading(isLoading) {
+            if (isLoading) {
+                uploadArea.classList.add('hidden');
+                loadingArea.classList.remove('hidden');
+                statusMsg.textContent = '';
+
+                // Reset Progress
+                progressBar.style.width = '5%';
+                let progress = 5;
+                progressInterval = setInterval(() => {
+                    if (progress < 90) {
+                        // Slow down as it gets higher
+                        const increment = progress < 60 ? 1 : 0.2;
+                        progress += increment;
+                        progressBar.style.width = `${progress}%`;
+                    }
+                }, 50);
+
+                // 랜덤 명언 표시
+                function showRandomQuote() {
+                    const randomIndex = Math.floor(Math.random() * readingQuotes.length);
+                    const quote = readingQuotes[randomIndex];
+                    loadingText.innerHTML = `<span class="font-semibold">"${quote.quote}"</span><br><span class="text-sm text-gray-400">- ${quote.author}</span>`;
+                }
+                
+                showRandomQuote();
+                messageInterval = setInterval(() => {
+                    showRandomQuote();
+                }, 3000); // Change quote every 3s
+
+            } else {
+                loadingArea.classList.add('hidden');
+                uploadArea.classList.remove('hidden');
+                clearInterval(messageInterval);
+                clearInterval(progressInterval);
+            }
+        }
+
+        const retryBanner = document.getElementById('retryBanner');
+        const retryBtn = document.getElementById('retryBtn');
+
+        // Retry Action
+        retryBtn.addEventListener('click', async () => {
+            setLoading(true); // Reuse loader
+            const t = translations[currentLang];
+            loadingText.innerHTML = `<i class="fas fa-search"></i> ${t.retryLoading}`;
+
+            try {
+                const response = await fetch('api_retry_enrich.php');
+
+                // Finish Progress
+                clearInterval(progressInterval);
+                progressBar.style.width = '100%';
+
+                const result = await response.json();
+
+                await new Promise(r => setTimeout(r, 500));
+
+                if (result.success) {
+                    // 목록 섹션 표시
+                    const dataSection = document.getElementById('dataSection');
+                    if (dataSection) {
+                        dataSection.classList.remove('hidden');
+                    }
+                    await fetchBooks();
+                    const t = translations[currentLang];
+                    alert(`${t.retryComplete} ${result.updated_count}${t.retryUpdated}`);
+                }
+            } catch (err) {
+                console.error(err);
+                alert('오류가 발생했습니다: ' + err.message);
+            } finally {
+                setLoading(false);
+            }
+        });
+
+        // Fetch Books
+        async function fetchBooks() {
+            try {
+                const response = await fetch('api_books.php');
+                const books = await response.json();
+
+                // 목록 섹션 표시 (데이터가 있거나 없거나)
+                const dataSection = document.getElementById('dataSection');
+                if (dataSection) {
+                    dataSection.classList.remove('hidden');
+                }
+
+                // 책 개수 표시
+                const bookCountEl = document.getElementById('bookCount');
+                if (bookCountEl) {
+                    if (books.length > 0) {
+                        bookCountEl.textContent = `[ ${books.length} ]`;
+                    } else {
+                        bookCountEl.textContent = '';
+                    }
+                }
+
+                bookList.innerHTML = '';
+                let hasIncompleteBooks = false;
+
+                if (books.length === 0) {
+                    emptyState.classList.remove('hidden');
+                    retryBanner.classList.add('hidden');
+                } else {
+                    emptyState.classList.add('hidden');
+                    books.forEach(book => {
+                        const hasCover = book.official_cover_url && book.official_cover_url.length > 5;
+                        const hasIsbn = book.isbn && book.isbn.length > 5;
+
+                        // Check if incomplete
+                        if (!hasCover || !hasIsbn) {
+                            hasIncompleteBooks = true;
+                        }
+
+                        // Placeholder 이미지를 SVG data URI로 생성
+                        const placeholderImg = 'data:image/svg+xml;base64,' + btoa('<svg xmlns="http://www.w3.org/2000/svg" width="60" height="90" viewBox="0 0 60 90"><rect width="60" height="90" fill="#f3f4f6"/><text x="30" y="45" font-family="Arial" font-size="10" fill="#9ca3af" text-anchor="middle">No Image</text></svg>');
+                        const coverImg = hasCover ? book.official_cover_url : placeholderImg;
+                        const hasDescription = book.description && book.description.trim().length > 0;
+                        const descPreview = hasDescription ? book.description : '줄거리 정보가 없습니다.';
+                        const isbn = hasIsbn ? book.isbn : '-';
+
+                        const row = document.createElement('tr');
+                        row.className = 'bg-white hover:bg-indigo-50 transition group';
+                        row.innerHTML = `
+                            <td class="px-4 py-4">
+                                <div class="w-12 h-16 rounded overflow-hidden shadow-sm border border-gray-200 group-hover:shadow-md transition bg-gray-100">
+                                    <img src="${coverImg}" 
+                                         class="w-full h-full object-cover ${hasCover ? 'cursor-zoom-in' : ''}" 
+                                         alt="Cover" 
+                                         onerror="this.src='${placeholderImg}'"
+                                         ${hasCover ? `onmouseenter="showPreview('${coverImg}', event)"
+                                         onmousemove="movePreview(event)"
+                                         onmouseleave="hidePreview()"` : ''}>
+                                </div>
+                            </td>
+                            <td class="px-4 py-4">
+                                <div class="font-bold text-gray-900 text-base">${book.title}</div>
+                                <div class="text-xs text-gray-500 font-mono mt-1 bg-gray-100 inline-block px-1.5 py-0.5 rounded">ISBN: ${isbn}</div>
+                            </td>
+                            <td class="px-4 py-4">
+                                <div class="text-gray-900 font-medium">${book.author || '저자 미상'}</div>
+                                <div class="text-xs text-gray-500 mt-0.5">${book.publisher || '-'}</div>
+                            </td>
+                            <td class="px-4 py-4 text-sm text-gray-600 whitespace-nowrap">
+                                ${book.published_date || '-'}
+                            </td>
+                            <td class="px-4 py-4">
+                                ${hasDescription ? 
+                                    `<div class="text-sm text-gray-500 truncate-multiline max-w-xs cursor-pointer hover:text-primary hover:underline" onclick='showDesc(${JSON.stringify(book.title)}, ${JSON.stringify(book.description)})'>
+                                        ${descPreview}
+                                    </div>` :
+                                    `<div class="text-sm text-gray-500 truncate-multiline max-w-xs">
+                                        ${descPreview}
+                                    </div>`
+                                }
+                            </td>
+                        `;
+                        bookList.appendChild(row);
+                    });
+
+                    // Show banner if incomplete items exist
+                    if (hasIncompleteBooks) {
+                        retryBanner.classList.remove('hidden');
+                    } else {
+                        retryBanner.classList.add('hidden');
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to fetch books', err);
+            }
+        }
+
+        function showDesc(title, desc) {
+            if (!desc) return;
+            document.getElementById('modalTitle').textContent = title;
+            document.getElementById('modalDesc').textContent = desc;
+            document.getElementById('descModal').classList.remove('hidden');
+        }
+
+        // Splash Modal Functions
+        function showSplashModal() {
+            const modal = document.getElementById('splashModal');
+            const t = translations[currentLang];
+            
+            // Update modal content based on language
+            const titleEl = document.getElementById('splashAppTitle');
+            const subtitleEl = document.getElementById('splashAppSubtitle');
+            if (currentLang === 'ko') {
+                titleEl.innerHTML = '책장 스캐너 <span class="text-lg text-gray-500 font-normal">BOOK SCANNER</span>';
+            } else {
+                titleEl.innerHTML = 'BOOK SCANNER <span class="text-lg text-gray-500 font-normal">책장 스캐너</span>';
+            }
+            document.getElementById('splashTechTitle').textContent = t.footerTechTitle;
+            document.getElementById('splashApiTitle').textContent = t.footerApiTitle;
+            document.getElementById('splashDevTitle').textContent = t.footerDevTitle;
+            
+            // Set splash image (16:9 aspect ratio)
+            const splashImage = document.getElementById('splashImage');
+            // 이미지 경로는 사용자가 준비한 이미지로 설정
+            // 예: splashImage.src = 'splash.jpg';
+            
+            modal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden'; // Prevent background scroll
+        }
+
+        function hideSplashModal() {
+            document.getElementById('splashModal').classList.add('hidden');
+            document.body.style.overflow = ''; // Restore scroll
+        }
+
+        // Close modal on outside click
+        document.addEventListener('DOMContentLoaded', function() {
+            const splashModal = document.getElementById('splashModal');
+            if (splashModal) {
+                splashModal.addEventListener('click', function(e) {
+                    if (e.target === splashModal) {
+                        hideSplashModal();
+                    }
+                });
+            }
+        });
+
+        // Export Excel
+        function exportToExcel() {
+            fetch('api_books.php')
+                .then(res => res.json())
+                .then(data => {
+                    // Prettify headers
+                    const prettyData = data.map(item => ({
+                        '번호': item.id,
+                        '제목': item.title,
+                        '저자': item.author,
+                        '출판사': item.publisher,
+                        '출판일': item.published_date,
+                        'ISBN': item.isbn,
+                        '줄거리': item.description,
+                        '등록일시': item.created_at
+                    }));
+
+                    const ws = XLSX.utils.json_to_sheet(prettyData);
+                    const wb = XLSX.utils.book_new();
+                    XLSX.utils.book_append_sheet(wb, ws, "내_서재_목록");
+                    XLSX.writeFile(wb, "My_Library.xlsx");
+                });
+        }
+
+        // Reset UI Trigger
+        function resetLibrary() {
+            document.getElementById('deleteConfirmModal').classList.remove('hidden');
+        }
+
+        // Actual Reset Action
+        async function runReset() {
+            setLoading(true); // Optional: show loading state
+            document.getElementById('deleteConfirmModal').classList.add('hidden'); // Close modal
+
+            try {
+                const response = await fetch('api_reset.php', {
+                    method: 'POST'
+                });
+                
+                // 응답 텍스트를 먼저 확인 (JSON 파싱 실패 대비)
+                const responseText = await response.text();
+                let result;
+                
+                try {
+                    result = JSON.parse(responseText);
+                } catch (parseError) {
+                    // JSON 파싱 실패 시 상세 에러 표시
+                    console.error('JSON Parse Error:', parseError);
+                    console.error('Response Text:', responseText);
+                    statusMsg.innerHTML = `<i class="fas fa-exclamation-triangle"></i> JSON 파싱 오류<br><small class="text-gray-500">${responseText.substring(0, 200)}</small>`;
+                    statusMsg.className = 'mt-4 text-sm font-bold text-red-600';
+                    return;
+                }
+
+                if (result.success) {
+                    statusMsg.innerHTML = `<i class="fas fa-check-circle"></i> 모든 데이터가 삭제되었습니다. (파일 ${result.deleted_files || 0}개 삭제)`;
+                    statusMsg.className = 'mt-4 text-sm font-bold text-green-600';
+                    
+                    // 빈 서재 메시지 표시
+                    const dataSection = document.getElementById('dataSection');
+                    const emptyState = document.getElementById('emptyState');
+                    const bookList = document.getElementById('bookList');
+                    const retryBanner = document.getElementById('retryBanner');
+                    const bookCountEl = document.getElementById('bookCount');
+                    
+                    // 목록 초기화
+                    bookList.innerHTML = '';
+                    emptyState.classList.remove('hidden');
+                    retryBanner.classList.add('hidden');
+                    if (bookCountEl) bookCountEl.textContent = '';
+                    
+                    // 데이터 섹션 표시 (빈 상태로)
+                    dataSection.classList.remove('hidden');
+                    dataSection.style.opacity = '1';
+                    dataSection.style.transition = 'opacity 0.5s ease-out';
+                    
+                    // 3초 후 부드럽게 숨기기
+                    setTimeout(() => {
+                        dataSection.style.opacity = '0';
+                        setTimeout(() => {
+                            dataSection.classList.add('hidden');
+                            dataSection.style.opacity = '1'; // 다음에 보일 때를 위해 리셋
+                        }, 500); // fade out 완료 후 숨김
+                    }, 3000);
+                } else {
+                    // 상세 에러 정보 표시
+                    console.error('Reset Error:', result);
+                    let errorMsg = result.error || '알 수 없는 오류';
+                    let errorDetails = '';
+                    
+                    if (result.error_type) {
+                        errorDetails += `<br><small class="text-gray-500">타입: ${result.error_type}</small>`;
+                    }
+                    if (result.timestamp) {
+                        errorDetails += `<br><small class="text-gray-500">시간: ${result.timestamp}</small>`;
+                    }
+                    
+                    statusMsg.innerHTML = `<i class="fas fa-exclamation-triangle"></i> 오류: ${errorMsg}${errorDetails}`;
+                    statusMsg.className = 'mt-4 text-sm font-bold text-red-600';
+                }
+            } catch (err) {
+                console.error('Network Error:', err);
+                statusMsg.innerHTML = `<i class="fas fa-wifi"></i> 서버 통신 오류<br><small class="text-gray-500">${err.message}</small>`;
+                statusMsg.className = 'mt-4 text-sm font-bold text-red-600';
+            } finally {
+                setLoading(false);
+            }
+        }
+    </script>
+</body>
+
+</html>
