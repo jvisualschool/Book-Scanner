@@ -51,3 +51,7 @@ server_config.json
 deploy_auto.sh
 setup_server.sh
 DEPLOYMENT_COMPLETE.md
+
+# 보안 스캔 도구 캐시
+.cache_ggshield
+*.cache_ggshield
